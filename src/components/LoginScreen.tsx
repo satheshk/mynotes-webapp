@@ -1,5 +1,14 @@
-import React from 'react';
-import { ShieldCheck, FolderLock, RefreshCw, Sparkles, CheckSquare, Lock } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  ShieldCheck,
+  FolderLock,
+  RefreshCw,
+  AlertTriangle,
+  ExternalLink,
+  Copy,
+  Check,
+} from 'lucide-react';
+import firebaseConfig from '../../firebase-applet-config.json';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -12,12 +21,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   isLoading,
   error,
 }) => {
+  const [copied, setCopied] = useState(false);
+  const isUnauthorizedDomain = error?.toLowerCase().includes('unauthorized-domain');
+  const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const firebaseSettingsUrl = `https://console.firebase.google.com/project/${firebaseConfig.projectId}/authentication/settings`;
+
+  const handleCopyHostname = () => {
+    if (currentHostname) {
+      navigator.clipboard.writeText(currentHostname);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <div
       id="login-screen"
       className="min-h-screen bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 flex flex-col items-center justify-center p-4"
     >
-      <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-3xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-8 text-center space-y-6">
+      <div className="w-full max-w-lg bg-white dark:bg-neutral-900 rounded-3xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-6 sm:p-8 text-center space-y-5">
         {/* Brand Icon */}
         <div className="w-16 h-16 rounded-2xl bg-amber-400 text-white flex items-center justify-center shadow-lg shadow-amber-400/20 mx-auto">
           <svg
@@ -39,8 +61,95 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </p>
         </div>
 
+        {/* Unauthorized Domain Guide for Vercel / Custom Domains */}
+        {isUnauthorizedDomain ? (
+          <div
+            id="unauthorized-domain-banner"
+            className="text-left p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/80 rounded-2xl space-y-3"
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                  Authorize Vercel Domain in Firebase
+                </h4>
+                <p className="text-[11px] text-amber-800 dark:text-amber-300/90 mt-0.5 leading-relaxed">
+                  Firebase Authentication requires new deployment domains to be listed under
+                  <strong> Authorized domains</strong> before Google OAuth popups are permitted.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-2.5 bg-white dark:bg-neutral-900 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-2">
+              <div className="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-300">
+                <span className="text-[11px] font-medium">Domain to add:</span>
+                <button
+                  type="button"
+                  onClick={handleCopyHostname}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-600" />
+                      <span>Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span>Copy Domain</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <code className="block text-xs font-mono bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded text-neutral-800 dark:text-neutral-200 break-all select-all">
+                {currentHostname}
+              </code>
+            </div>
+
+            <div className="text-[11px] text-amber-900 dark:text-amber-200/90 space-y-1">
+              <p className="font-semibold">Quick 3-step fix:</p>
+              <ol className="list-decimal list-inside space-y-1 text-neutral-700 dark:text-neutral-300 pl-1">
+                <li>
+                  Open your{' '}
+                  <a
+                    href={firebaseSettingsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-amber-600 dark:text-amber-400 font-semibold underline inline-flex items-center gap-0.5"
+                  >
+                    Firebase Auth Settings
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </li>
+                <li>Scroll down to the <strong>Authorized domains</strong> section.</li>
+                <li>
+                  Click <strong>Add domain</strong>, paste{' '}
+                  <code className="px-1 py-0.5 bg-amber-200/60 dark:bg-amber-900/60 rounded font-mono">
+                    {currentHostname}
+                  </code>
+                  , and click <strong>Save</strong>.
+                </li>
+              </ol>
+            </div>
+
+            <a
+              href={firebaseSettingsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-medium transition-colors"
+            >
+              Open Firebase Authorized Domains Settings
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        ) : error ? (
+          <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-xl text-xs text-red-600 dark:text-red-300 text-left">
+            {error}
+          </div>
+        ) : null}
+
         {/* Feature Highlights */}
-        <div className="text-left space-y-3 py-2">
+        <div className="text-left space-y-3 py-1">
           <div className="flex items-start gap-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
             <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
             <div>
@@ -77,12 +186,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
           </div>
         </div>
-
-        {error && (
-          <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-xl text-xs text-red-600 dark:text-red-300">
-            {error}
-          </div>
-        )}
 
         {/* Google Sign-in Material Button */}
         <div className="pt-2">
