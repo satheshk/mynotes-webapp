@@ -1,0 +1,6 @@
+{
+  "name": "Keep Notes",
+  "description": "A Google Keep style note-taking app with end-to-end encryption, real-time sync, and Google Drive folder storage.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
