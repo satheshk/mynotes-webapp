@@ -7,6 +7,10 @@ import {
   ExternalLink,
   Copy,
   Check,
+  UserCheck,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -22,9 +26,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   error,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [showTesterGuide, setShowTesterGuide] = useState(false);
   const isUnauthorizedDomain = error?.toLowerCase().includes('unauthorized-domain');
+  const isTesterError =
+    error?.toLowerCase().includes('tested') ||
+    error?.toLowerCase().includes('verification') ||
+    error?.toLowerCase().includes('access blocked') ||
+    error?.toLowerCase().includes('unapproved');
   const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
   const firebaseSettingsUrl = `https://console.firebase.google.com/project/${firebaseConfig.projectId}/authentication/settings`;
+  const oauthConsentUrl = `https://console.cloud.google.com/apis/credentials/consent?project=${firebaseConfig.projectId}`;
 
   const handleCopyHostname = () => {
     if (currentHostname) {
@@ -142,6 +153,56 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
+        ) : isTesterError ? (
+          <div
+            id="tester-error-banner"
+            className="text-left p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/80 rounded-2xl space-y-3"
+          >
+            <div className="flex items-start gap-2.5">
+              <UserCheck className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                  Google Verification: Add Your Email to "Test Users"
+                </h4>
+                <p className="text-[11px] text-amber-800 dark:text-amber-300/90 mt-0.5 leading-relaxed">
+                  While your Google OAuth Consent Screen is in <strong>Testing</strong> status, Google
+                  only allows approved <strong>Test Users</strong> to sign in.
+                </p>
+              </div>
+            </div>
+
+            <div className="text-[11px] text-amber-900 dark:text-amber-200/90 space-y-1 bg-white dark:bg-neutral-900 p-3 rounded-xl border border-amber-200 dark:border-amber-800/60">
+              <p className="font-semibold text-neutral-900 dark:text-neutral-100">Fix in 2 quick steps:</p>
+              <ol className="list-decimal list-inside space-y-1.5 text-neutral-700 dark:text-neutral-300">
+                <li>
+                  Open{' '}
+                  <a
+                    href={oauthConsentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-amber-600 dark:text-amber-400 font-semibold underline inline-flex items-center gap-0.5"
+                  >
+                    Google Cloud OAuth Consent Screen
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </li>
+                <li>
+                  Scroll down to the <strong>Test users</strong> section, click <strong>+ ADD USERS</strong>,
+                  enter your Google email, and click <strong>Save</strong>.
+                </li>
+              </ol>
+            </div>
+
+            <a
+              href={oauthConsentUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-medium transition-colors"
+            >
+              Open Google Cloud OAuth Consent Screen
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
         ) : error ? (
           <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-xl text-xs text-red-600 dark:text-red-300 text-left">
             {error}
@@ -230,6 +291,59 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         <p className="text-[11px] text-neutral-400">
           Uses Google OAuth 2.0 to access your configured Google Drive folder.
         </p>
+
+        {/* Expandable OAuth Testing Mode Helper */}
+        <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800">
+          <button
+            type="button"
+            onClick={() => setShowTesterGuide(!showTesterGuide)}
+            className="text-xs text-neutral-500 hover:text-amber-600 dark:hover:text-amber-400 flex items-center justify-center gap-1.5 mx-auto font-medium transition-colors cursor-pointer"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>Seeing "App is currently being tested" error?</span>
+            {showTesterGuide ? (
+              <ChevronUp className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" />
+            )}
+          </button>
+
+          {showTesterGuide && (
+            <div
+              id="tester-guide-dropdown"
+              className="mt-3 p-3.5 bg-neutral-50 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 rounded-2xl text-left space-y-2.5 text-xs animate-in fade-in duration-150"
+            >
+              <div className="flex items-start gap-2 text-amber-700 dark:text-amber-400 font-semibold">
+                <UserCheck className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>Google OAuth Consent Screen: Add Test User</span>
+              </div>
+              <p className="text-[11px] text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                When an app requests access to Google Drive and is in <strong>Testing</strong> mode,
+                Google blocks anyone whose email is not registered in the <strong>Test users</strong> list.
+              </p>
+
+              <div className="space-y-1.5 text-[11px] text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-900 p-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                <p className="font-semibold text-neutral-900 dark:text-neutral-100">Step-by-step fix:</p>
+                <ol className="list-decimal list-inside space-y-1 pl-0.5">
+                  <li>Open the Google Cloud OAuth Consent Screen.</li>
+                  <li>Scroll down to <strong>Test users</strong> and click <strong>+ ADD USERS</strong>.</li>
+                  <li>Enter your Google email address and click <strong>Save</strong>.</li>
+                  <li>Return here and sign in again. (If prompted with "Google hasn't verified this app", click <em>Advanced</em> → <em>Go to Keep Notes (unsafe)</em>).</li>
+                </ol>
+              </div>
+
+              <a
+                href={oauthConsentUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-medium transition-colors"
+              >
+                Go to Google Cloud OAuth Consent Screen
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

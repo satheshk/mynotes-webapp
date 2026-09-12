@@ -58,17 +58,34 @@ export interface DriveFolderConfig {
   metadataFileId?: string;
 }
 
+export interface AppsScriptApp {
+  id: string;
+  title: string;
+  url: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppMetadata {
   version: number;
   salt: string;
   canary: EncryptedPayload;
   labels: string[];
+  appsScripts?: AppsScriptApp[];
   updatedAt: string;
 }
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
 
-export type CurrentView = 'notes' | 'reminders' | 'archive' | 'trash' | { label: string };
+export type CurrentView =
+  | 'notes'
+  | 'reminders'
+  | 'archive'
+  | 'trash'
+  | 'apps-script-config'
+  | { label: string }
+  | { appScriptId: string };
 
 export interface UserProfile {
   uid: string;

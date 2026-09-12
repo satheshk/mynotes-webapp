@@ -1,4 +1,4 @@
-import { Note, AppMetadata, DriveFolderConfig, SyncStatus } from '../types';
+import { Note, AppMetadata, DriveFolderConfig, SyncStatus, AppsScriptApp } from '../types';
 import {
   getOrCreateKeepFolder,
   loadMetadata,
@@ -24,6 +24,7 @@ const LOCAL_STORAGE_META_PREFIX = 'keep_meta_cache_';
 export interface SyncEngineEvents {
   onNotesUpdated: (notes: Note[]) => void;
   onLabelsUpdated: (labels: string[]) => void;
+  onAppsScriptsUpdated?: (scripts: AppsScriptApp[]) => void;
   onSyncStatusChanged: (status: SyncStatus, lastSync: Date | null, error: string | null) => void;
   onPassphraseNeeded: (salt: string, isNewSetup: boolean) => void;
   onFolderReady: (folder: DriveFolderConfig) => void;
@@ -59,6 +60,8 @@ export class KeepSyncEngine {
             this.events.onNotesUpdated(this.getNotesList());
           } else if (event.data?.type === 'LABELS_UPDATED') {
             this.events.onLabelsUpdated(event.data.labels);
+          } else if (event.data?.type === 'APPS_SCRIPTS_UPDATED') {
+            this.events.onAppsScriptsUpdated?.(event.data.appsScripts || []);
           }
         };
       } catch (e) {
@@ -115,6 +118,7 @@ export class KeepSyncEngine {
           salt: this.salt,
           canary,
           labels: ['Personal', 'Work', 'Ideas', 'Tasks'],
+          appsScripts: [],
           updatedAt: new Date().toISOString(),
         };
         const fileId = await saveMetadata(
@@ -127,6 +131,7 @@ export class KeepSyncEngine {
         this.metadata = newMeta;
         this.saveMetaToLocalStorage(newMeta);
         this.events.onLabelsUpdated(newMeta.labels);
+        this.events.onAppsScriptsUpdated?.([]);
       }
 
       this.cryptoKey = derivedKey;
@@ -160,7 +165,8 @@ export class KeepSyncEngine {
         this.metadata = metadata;
         this.salt = metadata.salt;
         this.saveMetaToLocalStorage(metadata);
-        this.events.onLabelsUpdated(metadata.labels);
+        this.events.onLabelsUpdated(metadata.labels || []);
+        this.events.onAppsScriptsUpdated?.(metadata.appsScripts || []);
 
         // Prompt user for passphrase to unlock existing encrypted notes
         this.events.onPassphraseNeeded(metadata.salt, false);
@@ -380,6 +386,40 @@ export class KeepSyncEngine {
     }
   }
 
+  public async updateAppsScripts(appsScripts: AppsScriptApp[]): Promise<void> {
+    // Maximum 5 Apps Scripts enforced
+    const sanitized = appsScripts.slice(0, 5);
+
+    if (this.metadata) {
+      this.metadata.appsScripts = sanitized;
+      this.metadata.updatedAt = new Date().toISOString();
+      this.saveMetaToLocalStorage(this.metadata);
+    } else {
+      // If metadata not yet loaded, create partial or cache
+      const cached = this.loadMetaFromLocalStorage();
+      if (cached) {
+        cached.appsScripts = sanitized;
+        this.saveMetaToLocalStorage(cached);
+      }
+    }
+
+    this.events.onAppsScriptsUpdated?.(sanitized);
+    this.broadcastChannel?.postMessage({ type: 'APPS_SCRIPTS_UPDATED', appsScripts: sanitized });
+
+    if (this.accessToken && this.folder && this.metadata) {
+      try {
+        await saveMetadata(
+          this.accessToken,
+          this.folder.folderId,
+          this.metadata,
+          this.folder.metadataFileId
+        );
+      } catch (e) {
+        console.error('Failed to update apps scripts on Drive:', e);
+      }
+    }
+  }
+
   public async getRawEncryptedPayload(noteId: string): Promise<string> {
     const note = this.notes.get(noteId);
     if (!note || !this.cryptoKey || !this.salt) {
@@ -447,8 +487,28 @@ export class KeepSyncEngine {
           this.notes.set(note.id, note);
         }
       }
+
+      // Also restore cached metadata for instantaneous offline/initial loading
+      const meta = this.loadMetaFromLocalStorage();
+      if (meta) {
+        if (meta.labels?.length) {
+          this.events.onLabelsUpdated(meta.labels);
+        }
+        if (meta.appsScripts) {
+          this.events.onAppsScriptsUpdated?.(meta.appsScripts);
+        }
+      }
     } catch (e) {
       console.warn('LocalStorage load failed:', e);
+    }
+  }
+
+  public loadMetaFromLocalStorage(): AppMetadata | null {
+    try {
+      const raw = localStorage.getItem(LOCAL_STORAGE_META_PREFIX + this.userId);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
     }
   }
 

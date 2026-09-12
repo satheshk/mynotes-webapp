@@ -8,17 +8,21 @@ import {
   Trash2,
   Shield,
   FolderLock,
+  Code2,
+  Settings2,
 } from 'lucide-react';
-import { CurrentView, Note } from '../types';
+import { CurrentView, Note, AppsScriptApp } from '../types';
 
 interface SidebarProps {
   currentView: CurrentView;
   onSelectView: (view: CurrentView) => void;
   labels: string[];
   notes: Note[];
+  appsScripts: AppsScriptApp[];
   isOpen: boolean;
   onOpenLabelManager: () => void;
   onOpenSecurity: () => void;
+  onOpenAppsScriptConfig: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -26,9 +30,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectView,
   labels,
   notes,
+  appsScripts = [],
   isOpen,
   onOpenLabelManager,
   onOpenSecurity,
+  onOpenAppsScriptConfig,
 }) => {
   const activeNotesCount = notes.filter((n) => !n.isArchived && !n.isTrashed).length;
   const remindersCount = notes.filter((n) => n.reminder && !n.isTrashed).length;
@@ -40,7 +46,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return view === currentView;
     }
     if (typeof view === 'object' && typeof currentView === 'object') {
-      return view.label === currentView.label;
+      if ('label' in view && 'label' in currentView) {
+        return view.label === currentView.label;
+      }
+      if ('appScriptId' in view && 'appScriptId' in currentView) {
+        return view.appScriptId === currentView.appScriptId;
+      }
     }
     return false;
   };
@@ -99,6 +110,65 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {remindersCount > 0 && (
                 <span className="text-xs font-normal text-neutral-400">{remindersCount}</span>
               )}
+            </div>
+          )}
+        </button>
+
+        {/* Google Apps Script Navigation Section (Next to Notes & Reminders) */}
+        {appsScripts.length > 0 && (
+          <>
+            <div className="my-1.5 border-t border-neutral-100 dark:border-neutral-800/80" />
+            {isOpen && (
+              <div className="px-4 pt-1 pb-0.5 flex items-center justify-between text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                <span>Apps Scripts</span>
+                <span className="text-[10px] font-normal text-neutral-400">({appsScripts.length}/5)</span>
+              </div>
+            )}
+            {appsScripts.map((app) => (
+              <button
+                key={app.id}
+                id={`nav-gas-${app.id}`}
+                onClick={() => onSelectView({ appScriptId: app.id })}
+                className={`w-full flex items-center gap-6 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+                  isOpen ? 'rounded-r-full mr-3' : 'justify-center rounded-xl mx-2 w-12 h-12'
+                } ${
+                  isViewActive({ appScriptId: app.id })
+                    ? 'bg-blue-100/80 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 font-semibold'
+                    : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                }`}
+                title={app.title}
+              >
+                <Code2 className="w-5 h-5 shrink-0 text-blue-600 dark:text-blue-400" />
+                {isOpen && (
+                  <div className="flex items-center justify-between flex-1 min-w-0 pr-2">
+                    <span className="truncate">{app.title}</span>
+                  </div>
+                )}
+              </button>
+            ))}
+          </>
+        )}
+
+        {/* Apps Script Config Link */}
+        <button
+          id="nav-gas-config"
+          onClick={onOpenAppsScriptConfig}
+          className={`w-full flex items-center gap-6 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+            isOpen ? 'rounded-r-full mr-3' : 'justify-center rounded-xl mx-2 w-12 h-12'
+          } ${
+            isViewActive('apps-script-config')
+              ? 'bg-blue-100/80 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 font-semibold'
+              : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+          }`}
+          title="Apps Script Config"
+        >
+          <Settings2 className="w-5 h-5 shrink-0 text-blue-500" />
+          {isOpen && (
+            <div className="flex items-center justify-between flex-1 min-w-0 pr-2">
+              <span className="truncate">Apps Script Config</span>
+              <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+                {appsScripts.length}/5
+              </span>
             </div>
           )}
         </button>
